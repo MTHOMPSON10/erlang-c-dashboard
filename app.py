@@ -1,25 +1,23 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import math  # Import the standard math module
+import math
+import io  # <-- We’ll use BytesIO from the io module
 
-# Erlang C calculation function
 def erlang_c(traffic_intensity, agents, target_answer_time, aht):
     if agents <= 0 or traffic_intensity >= agents:
-        return 1.0  # 100% waiting if overloaded or invalid
+        return 1.0
 
     rho = traffic_intensity / agents
-    fact = math.factorial  # Use math.factorial
+    fact = math.factorial
 
     sum_terms = sum((traffic_intensity ** n) / fact(n) for n in range(agents))
     erlang_c_prob = ((traffic_intensity ** agents) / (fact(agents) * (1 - rho)))
     erlang_c_prob /= (sum_terms + erlang_c_prob)
 
-    # Probability of being answered within target time
     pwait = erlang_c_prob * np.exp(-(agents - traffic_intensity) * target_answer_time / aht)
     return pwait
 
-# Upload section
 st.title("📞 Erlang C Forecasting Dashboard")
 uploaded_file = st.file_uploader("Upload your average call volume per interval (.xlsx)", type="xlsx")
 
@@ -48,4 +46,14 @@ if uploaded_file:
     st.subheader("📊 Forecast Results")
     st.dataframe(df)
     
-    st.download_button("Download Forecast as Excel", data=df.to_excel(index=False), file_name="Erlang_Forecast_Updated.xlsx")
+    # Write the DataFrame to an in-memory buffer
+    buffer = io.BytesIO()
+    df.to_excel(buffer, index=False)
+    
+    # Use the buffer's contents in the download button
+    st.download_button(
+        label="Download Forecast as Excel",
+        data=buffer.getvalue(),
+        file_name="Erlang_Forecast_Updated.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
